@@ -9,12 +9,6 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
-import com.example.demo.DTO.CharacterCreateRequest;
-import com.example.demo.DTO.CharacterItemInput;
-import com.example.demo.DTO.CharacterResponse;
-import com.example.demo.DTO.CharacterSkillInput;
-import com.example.demo.DTO.CharacterUpdateRequest;
-import com.example.demo.DTO.NpcAffinityInput;
 import com.example.demo.Entity.Campaign;
 import com.example.demo.Entity.CampaignMember;
 import com.example.demo.Entity.Character;
@@ -23,14 +17,12 @@ import com.example.demo.Entity.CharacterSkill;
 import com.example.demo.Entity.Feat;
 import com.example.demo.Entity.NpcAffinity;
 import com.example.demo.Entity.Skill;
-import com.example.demo.Repository.CampaignMemberRepository;
-import com.example.demo.Repository.CampaignRepository;
-import com.example.demo.Repository.CharacterItemRepository;
-import com.example.demo.Repository.CharacterRepository;
-import com.example.demo.Repository.CharacterSkillRepository;
-import com.example.demo.Repository.FeatRepository;
-import com.example.demo.Repository.NpcAffinityRepository;
-import com.example.demo.Repository.SkillRepository;
+import com.example.demo.dto.CharacterCreateRequest;
+import com.example.demo.dto.CharacterItemInput;
+import com.example.demo.dto.CharacterResponse;
+import com.example.demo.dto.CharacterSkillInput;
+import com.example.demo.dto.CharacterUpdateRequest;
+import com.example.demo.dto.NpcAffinityInput;
 import com.example.demo.enums.CampaignMemberRole;
 import com.example.demo.enums.CharacterType;
 import com.example.demo.enums.SkillType;
@@ -39,6 +31,14 @@ import com.example.demo.exception.CampaignMemberNotFoundException;
 import com.example.demo.exception.CampaignNotFoundException;
 import com.example.demo.exception.CharacterNotFoundException;
 import com.example.demo.mapper.CharacterMapper;
+import com.example.demo.repository.CampaignMemberRepository;
+import com.example.demo.repository.CampaignRepository;
+import com.example.demo.repository.CharacterItemRepository;
+import com.example.demo.repository.CharacterRepository;
+import com.example.demo.repository.CharacterSkillRepository;
+import com.example.demo.repository.FeatRepository;
+import com.example.demo.repository.NpcAffinityRepository;
+import com.example.demo.repository.SkillRepository;
 
 import jakarta.transaction.Transactional;
 
@@ -150,8 +150,10 @@ public class CharacterService {
                 character.setCampaign(campaign);
                 character.setOwnerMember(null);
                 character.setCharacterType(CharacterType.NPC);
-
+                
                 fillBasicFields(character, request);
+
+                Character savedCharacter = characterRepository.save(character);
 
                 List<CharacterSkill> characterSkills = buildCharacterSkills(character, request.getSkills());
                 characterSkillRepository.saveAll(characterSkills);
@@ -159,7 +161,6 @@ public class CharacterService {
                 List<Feat> feats = resolveFeats(request);
                 character.setFeats(feats);
 
-                Character savedCharacter = characterRepository.save(character);
 
                 List<CharacterItem> items = buildCharacterItems(character, request.getItems());
                 characterItemRepository.saveAll(items);

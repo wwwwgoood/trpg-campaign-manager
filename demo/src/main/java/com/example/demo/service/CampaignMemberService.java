@@ -2,12 +2,12 @@ package com.example.demo.service;
 
 import org.springframework.stereotype.Service;
 
-import com.example.demo.DTO.CampaignMemberCreateRequest;
 import com.example.demo.Entity.Campaign;
 import com.example.demo.Entity.CampaignMember;
-import com.example.demo.Repository.CampaignMemberRepository;
-import com.example.demo.Repository.CampaignRepository;
+import com.example.demo.dto.CampaignMemberCreateRequest;
 import com.example.demo.exception.CampaignNotFoundException;
+import com.example.demo.repository.CampaignMemberRepository;
+import com.example.demo.repository.CampaignRepository;
 
 @Service
 public class CampaignMemberService {

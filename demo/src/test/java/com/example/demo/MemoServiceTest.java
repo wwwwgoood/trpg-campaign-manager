@@ -15,9 +15,9 @@ import org.mockito.Mockito;
 
 import com.example.demo.Entity.Campaign;
 import com.example.demo.Entity.Memo;
-import com.example.demo.Repository.CampaignRepository;
-import com.example.demo.Repository.MemoRepository;
 import com.example.demo.exception.CampaignNotFoundException;
+import com.example.demo.repository.CampaignRepository;
+import com.example.demo.repository.MemoRepository;
 import com.example.demo.service.MemoService;
 
 public class MemoServiceTest {

@@ -5,8 +5,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import com.example.demo.Entity.Skill;
-import com.example.demo.Repository.SkillRepository;
 import com.example.demo.enums.SkillType;
+import com.example.demo.repository.SkillRepository;
 
 @Configuration
 public class SkillDataInitializer {

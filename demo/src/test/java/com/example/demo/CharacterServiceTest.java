@@ -14,21 +14,21 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.example.demo.DTO.CharacterResponse;
 import com.example.demo.Entity.Campaign;
 import com.example.demo.Entity.CampaignMember;
 import com.example.demo.Entity.Character;
 import com.example.demo.Entity.CharacterItem;
 import com.example.demo.Entity.CharacterSkill;
 import com.example.demo.Entity.NpcAffinity;
-import com.example.demo.Repository.CampaignMemberRepository;
-import com.example.demo.Repository.CharacterItemRepository;
-import com.example.demo.Repository.CharacterRepository;
-import com.example.demo.Repository.CharacterSkillRepository;
-import com.example.demo.Repository.NpcAffinityRepository;
+import com.example.demo.dto.CharacterResponse;
 import com.example.demo.enums.CampaignMemberRole;
 import com.example.demo.exception.BusinessRuleException;
 import com.example.demo.mapper.CharacterMapper;
+import com.example.demo.repository.CampaignMemberRepository;
+import com.example.demo.repository.CharacterItemRepository;
+import com.example.demo.repository.CharacterRepository;
+import com.example.demo.repository.CharacterSkillRepository;
+import com.example.demo.repository.NpcAffinityRepository;
 import com.example.demo.service.CharacterService;
 
 @ExtendWith(MockitoExtension.class)

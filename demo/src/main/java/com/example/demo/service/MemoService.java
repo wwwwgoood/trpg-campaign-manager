@@ -7,10 +7,10 @@ import org.springframework.stereotype.Service;
 import com.example.demo.MemoCategory;
 import com.example.demo.Entity.Campaign;
 import com.example.demo.Entity.Memo;
-import com.example.demo.Repository.CampaignRepository;
-import com.example.demo.Repository.MemoRepository;
 import com.example.demo.exception.CampaignNotFoundException;
 import com.example.demo.exception.MemoNotFoundException;
+import com.example.demo.repository.CampaignRepository;
+import com.example.demo.repository.MemoRepository;
 
 @Service
 public class MemoService {

@@ -4,17 +4,17 @@ import java.util.List;
 
 import org.springframework.stereotype.Component;
 
-import com.example.demo.DTO.CharacterFeatResponse;
-import com.example.demo.DTO.CharacterItemResponse;
-import com.example.demo.DTO.CharacterResponse;
-import com.example.demo.DTO.CharacterSkillResponse;
-import com.example.demo.DTO.NpcAffinityResponse;
-import com.example.demo.DTO.SensitiveFieldResponse;
 import com.example.demo.Entity.Character;
 import com.example.demo.Entity.CharacterItem;
 import com.example.demo.Entity.CharacterSkill;
 import com.example.demo.Entity.Feat;
 import com.example.demo.Entity.NpcAffinity;
+import com.example.demo.dto.CharacterFeatResponse;
+import com.example.demo.dto.CharacterItemResponse;
+import com.example.demo.dto.CharacterResponse;
+import com.example.demo.dto.CharacterSkillResponse;
+import com.example.demo.dto.NpcAffinityResponse;
+import com.example.demo.dto.SensitiveFieldResponse;
 
 @Component
 public class CharacterMapper {

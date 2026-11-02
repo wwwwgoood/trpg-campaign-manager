@@ -13,10 +13,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.demo.DTO.CreateMemoRequest;
-import com.example.demo.DTO.MemoResponse;
-import com.example.demo.DTO.UpdateMemoRequest;
 import com.example.demo.Entity.Memo;
+import com.example.demo.dto.CreateMemoRequest;
+import com.example.demo.dto.MemoResponse;
+import com.example.demo.dto.UpdateMemoRequest;
 import com.example.demo.service.MemoService;
 
 import jakarta.validation.Valid;

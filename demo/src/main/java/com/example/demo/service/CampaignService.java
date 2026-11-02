@@ -6,7 +6,7 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 
 import com.example.demo.Entity.Campaign;
-import com.example.demo.Repository.CampaignRepository;
+import com.example.demo.repository.CampaignRepository;
 
 @Service
 public class CampaignService {

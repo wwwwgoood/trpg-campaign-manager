@@ -12,9 +12,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.demo.DTO.CharacterCreateRequest;
-import com.example.demo.DTO.CharacterResponse;
-import com.example.demo.DTO.CharacterUpdateRequest;
+import com.example.demo.dto.CharacterCreateRequest;
+import com.example.demo.dto.CharacterResponse;
+import com.example.demo.dto.CharacterUpdateRequest;
 import com.example.demo.service.CharacterService;
 
 import jakarta.validation.Valid;

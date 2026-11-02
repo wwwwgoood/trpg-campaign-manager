@@ -1,4 +1,4 @@
-package com.example.demo.DTO;
+package com.example.demo.dto;
 
 import com.example.demo.enums.CampaignMemberRole;
 
