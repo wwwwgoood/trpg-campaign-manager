@@ -1,5 +1,4 @@
-import { useState } from "react";
-import type { Memo, MemoCategory } from "../types/memo";
+import type { Memo } from "../types/memo";
 
 interface MemoCardProps {
     memo: Memo
