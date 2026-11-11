@@ -1,16 +1,19 @@
 package com.example.demo.controller;
 
 import java.util.List;
-import java.util.Optional;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.demo.Entity.Campaign;
+import com.example.demo.dto.CampaignResponse;
+import com.example.demo.dto.CreateCampaignRequest;
 import com.example.demo.service.CampaignService;
+
+import jakarta.validation.Valid;
 
 @RestController
 public class CampaignController {
@@ -22,22 +25,30 @@ public class CampaignController {
     }
 
     /** 接收创建团务请求并返回保存后的团务。 */
-    @PostMapping("/api/campaigns")
-    public Campaign createCampaign(@RequestBody Campaign campaign) {
-        return campaignService.createCampaign(campaign);
-    }
+@PostMapping("/api/campaigns")
+public CampaignResponse createCampaign(
+        @Valid @RequestBody CreateCampaignRequest request) {
 
-    /** 返回所有团务。 */
-    @GetMapping("/api/campaigns")
-    public List<Campaign> getallCampaigns()
-    {
-        return campaignService.getAllCampaigns();
-    }
+    return CampaignResponse.from(
+        campaignService.createCampaign(request.name())
+    );
+}
 
-    /** 按 ID 查询团务，找不到时返回空结果。 */
-    @GetMapping("/api/campaigns/{id}")
-    public Optional<Campaign> getCampaignById(@PathVariable Long id)
-    {
-        return campaignService.getCampaignById(id);
-    }
+@GetMapping("/api/campaigns")
+public List<CampaignResponse> getAllCampaigns() {
+    return campaignService.getAllCampaigns()
+            .stream()
+            .map(CampaignResponse::from)
+            .toList();
+}
+
+@GetMapping("/api/campaigns/{id}")
+public ResponseEntity<CampaignResponse> getCampaignById(
+        @PathVariable Long id) {
+
+    return campaignService.getCampaignById(id)
+            .map(CampaignResponse::from)
+            .map(ResponseEntity::ok)
+            .orElseGet(() -> ResponseEntity.notFound().build());
+}
 }

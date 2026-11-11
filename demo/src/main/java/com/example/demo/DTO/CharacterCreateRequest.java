@@ -51,4 +51,6 @@ public class CharacterCreateRequest {
 
     @Valid
     private List<NpcAffinityInput> affinities;
+
+    
 }

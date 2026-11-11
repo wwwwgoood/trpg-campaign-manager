@@ -16,6 +16,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -70,5 +71,16 @@ public class Character {
     @ManyToMany
     @JoinTable(name = "character_feat", joinColumns = @JoinColumn(name = "character_id"), inverseJoinColumns = @JoinColumn(name = "feat_id"))
     private List<Feat> feats = new ArrayList<>();
+
+    @Column(nullable = false)
+    private Integer currentAp = 2;
+
+    @Column(nullable = false)
+    private Integer currentRp = 1;
+
+    @ManyToMany
+    @JoinTable(name = "character_game_action", joinColumns = @JoinColumn(name = "character_id"), inverseJoinColumns = @JoinColumn(name = "action_id"), uniqueConstraints = @UniqueConstraint(columnNames = {
+            "character_id", "action_id" }))
+    private List<GameActionDefinition> knownActions = new ArrayList<>();
 
 }

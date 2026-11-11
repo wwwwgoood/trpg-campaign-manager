@@ -6,8 +6,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.demo.Entity.CampaignMember;
 import com.example.demo.dto.CampaignMemberCreateRequest;
+import com.example.demo.dto.CampaignMemberResponse;
 import com.example.demo.service.CampaignMemberService;
 
 @RestController
@@ -22,13 +22,12 @@ public class CampaignMemberController {
     }
 
     @PostMapping("/campaigns/{campaignId}/members")
-    public CampaignMember createMember(
+    public CampaignMemberResponse createMember(
             @PathVariable Long campaignId,
             @RequestBody CampaignMemberCreateRequest request) {
 
-        return campaignMemberService.createMember(
-                campaignId,
-                request
-        );
+return CampaignMemberResponse.from(
+    campaignMemberService.createMember(campaignId, request)
+);
     }
 }

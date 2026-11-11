@@ -39,7 +39,8 @@ public class MemoController {
                 campaignId,
                 request.name(),
                 request.category(),
-                request.description());
+                request.description(),
+                request.isPrivate());
 
         return toResponse(memo);
     }
@@ -76,12 +77,16 @@ public class MemoController {
                 memo.getCampaign().getId(),
                 memo.getName(),
                 memo.getCategory(),
-                memo.getDescription());
+                memo.getDescription(),
+                memo.isPrivate(),
+                memo.getOwnerMember() == null
+                        ? null
+                        : memo.getOwnerMember().getId());
     }
 
     /** 删除指定备忘录，成功时返回 204。 */
     @DeleteMapping("/api/memos/{memoId}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)  
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteMemo(@PathVariable Long memoId) {
         memoService.deleteMemo(memoId);
     }

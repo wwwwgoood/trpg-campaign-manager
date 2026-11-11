@@ -50,12 +50,10 @@ public class CharacterController {
 
     @GetMapping("/characters/{characterId}")
     public CharacterResponse getCharacter(
-            @PathVariable Long characterId,
-            @RequestParam Long viewerMemberId) {
+            @PathVariable Long characterId) {
 
         return characterService.getCharacterResponse(
-                characterId,
-                viewerMemberId);
+                characterId);
     }
 
     @GetMapping("/campaigns/{campaignId}/characters")
@@ -64,29 +62,24 @@ public class CharacterController {
             @RequestParam Long viewerMemberId) {
 
         return characterService.getCharacters(
-                campaignId,
-                viewerMemberId);
+                campaignId);
     }
 
     @DeleteMapping("/characters/{characterId}")
     public void deleteCharacter(
-            @PathVariable Long characterId,
-            @RequestParam Long viewerMemberId) {
+            @PathVariable Long characterId) {
 
         characterService.deleteCharacter(
-                characterId,
-                viewerMemberId);
+                characterId);
     }
 
     @PutMapping("/characters/{characterId}")
     public CharacterResponse updateCharacter(
             @PathVariable Long characterId,
-            @RequestParam Long viewerMemberId,
             @RequestBody CharacterUpdateRequest request) {
 
         return characterService.updateCharacter(
                 characterId,
-                viewerMemberId,
                 request);
     }
 }

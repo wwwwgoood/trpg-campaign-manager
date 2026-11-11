@@ -7,7 +7,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.example.demo.Entity.Campaign;
 import com.example.demo.Entity.CampaignMember;
@@ -27,7 +29,6 @@ import com.example.demo.enums.CampaignMemberRole;
 import com.example.demo.enums.CharacterType;
 import com.example.demo.enums.SkillType;
 import com.example.demo.exception.BusinessRuleException;
-import com.example.demo.exception.CampaignMemberNotFoundException;
 import com.example.demo.exception.CampaignNotFoundException;
 import com.example.demo.exception.CharacterNotFoundException;
 import com.example.demo.mapper.CharacterMapper;
@@ -53,6 +54,7 @@ public class CharacterService {
         private final FeatRepository featRepository;
         private final NpcAffinityRepository npcAffinityRepository;
         private CharacterMapper characterMapper;
+        private final CampaignAccessService campaignAccessService;
 
         /** 注入角色创建、关联数据查询及响应转换所需的组件。 */
         public CharacterService(CampaignRepository campaignRepository,
@@ -63,7 +65,7 @@ public class CharacterService {
                         FeatRepository featRepository,
                         CharacterSkillRepository characterSkillRepository,
                         CharacterMapper characterMapper,
-                        NpcAffinityRepository npcAffinityRepository) {
+                        NpcAffinityRepository npcAffinityRepository, CampaignAccessService campaignAccessService) {
                 this.campaignRepository = campaignRepository;
                 this.campaignMemberRepository = campaignMemberRepository;
                 this.characterRepository = characterRepository;
@@ -73,6 +75,7 @@ public class CharacterService {
                 this.characterMapper = characterMapper;
                 this.characterSkillRepository = characterSkillRepository;
                 this.npcAffinityRepository = npcAffinityRepository;
+                this.campaignAccessService = campaignAccessService;
         }
 
         /** 创建玩家角色及其技能、物品和专长，并按查看权限组装响应。 */
@@ -85,15 +88,52 @@ public class CharacterService {
 
                 // 先校验请求完整性、归属关系、成员身份和角色名唯一性。
                 validatePlayerCharacterRequest(request);
-                CampaignMember ownerMember = campaignMemberRepository.findById(request.getOwnerMemberId())
-                                .orElseThrow(() -> new CampaignMemberNotFoundException(request.getOwnerMemberId()));
-                if (!ownerMember.getCampaign().getId().equals(campaignId)) {
-                        throw new BusinessRuleException(
-                                        "Campaign member does not belong to this campaign");
+                CampaignMember currentMember = campaignAccessService.requireMember(campaignId);
+
+                CampaignMember ownerMember;
+
+                if (currentMember.getRole() == CampaignMemberRole.DM) {
+
+                        // DM 可以指定玩家角色的拥有者
+                        Long ownerMemberId = request.getOwnerMemberId();
+
+                        if (ownerMemberId == null) {
+                                throw new BusinessRuleException(
+                                                "DM must specify a player character owner");
+                        }
+
+                        ownerMember = campaignMemberRepository
+                                        .findById(ownerMemberId)
+                                        .orElseThrow(() -> new BusinessRuleException(
+                                                        "Owner member does not exist"));
+
+                        // 指定成员必须属于当前战役
+                        if (!ownerMember.getCampaign().getId().equals(campaignId)) {
+                                throw new ResponseStatusException(
+                                                HttpStatus.FORBIDDEN,
+                                                "Owner must belong to this campaign");
+                        }
+
+                        if (ownerMember.getRole() != CampaignMemberRole.PLAYER) {
+                                throw new BusinessRuleException(
+                                                "Owner must be a player");
+                        }
+
+                } else if (currentMember.getRole() == CampaignMemberRole.PLAYER) {
+
+                        // 普通玩家只能创建属于自己的角色
+                        ownerMember = currentMember;
+
+                } else {
+                        throw new ResponseStatusException(
+                                        HttpStatus.FORBIDDEN,
+                                        "You cannot create player characters");
                 }
+
                 if (ownerMember.getRole() != CampaignMemberRole.PLAYER) {
                         throw new BusinessRuleException("Player character owner must have PLAYER role");
                 }
+
                 if (characterRepository.existsByCampaign_IdAndName(campaignId, request.getName())) {
                         throw new BusinessRuleException("Character name already existed");
                 }
@@ -133,6 +173,14 @@ public class CharacterService {
         public CharacterResponse createNpcCharacter(
                         Long campaignId,
                         CharacterCreateRequest request) {
+                CampaignMember currentMember = campaignAccessService.requireMember(campaignId);
+
+                if (currentMember.getRole() != CampaignMemberRole.DM) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.FORBIDDEN,
+                                        "Only DM can create NPCs");
+                }
+
                 Campaign campaign = campaignRepository.findById(campaignId)
                                 .orElseThrow(() -> new CampaignNotFoundException(campaignId));
 
@@ -150,7 +198,7 @@ public class CharacterService {
                 character.setCampaign(campaign);
                 character.setOwnerMember(null);
                 character.setCharacterType(CharacterType.NPC);
-                
+
                 fillBasicFields(character, request);
 
                 Character savedCharacter = characterRepository.save(character);
@@ -160,7 +208,6 @@ public class CharacterService {
 
                 List<Feat> feats = resolveFeats(request);
                 character.setFeats(feats);
-
 
                 List<CharacterItem> items = buildCharacterItems(character, request.getItems());
                 characterItemRepository.saveAll(items);
@@ -396,11 +443,6 @@ public class CharacterService {
         /** 校验玩家角色的必填字段和技能可见性约束。 */
         private void validatePlayerCharacterRequest(CharacterCreateRequest request) {
 
-                if (request.getOwnerMemberId() == null) {
-                        throw new BusinessRuleException(
-                                        "Player character must have an owner");
-                }
-
                 // 玩家角色的基础属性、财务信息和背景信息必须完整。
                 if (request.getGender() == null
                                 || request.getNationality() == null
@@ -448,22 +490,17 @@ public class CharacterService {
 
         @Transactional
         public CharacterResponse getCharacterResponse(
-                        Long characterId,
-                        Long viewerMemberId) {
+                        Long characterId) {
                 Character character = characterRepository.findById(characterId)
                                 .orElseThrow(() -> new CharacterNotFoundException(characterId));
-                CampaignMember viewerMember = campaignMemberRepository.findById(viewerMemberId)
-                                .orElseThrow(() -> new CampaignMemberNotFoundException(viewerMemberId));
-                if (!viewerMember.getCampaign().getId()
-                                .equals(character.getCampaign().getId())) {
+                CampaignMember viewerMember = campaignAccessService.requireMember(character.getCampaign().getId());
 
-                        throw new BusinessRuleException(
-                                        "Viewer does not belong to this campaign");
-                }
                 boolean canViewPrivate = canViewPrivateFields(character, viewerMember);
+
                 List<CharacterSkill> skills = characterSkillRepository.findByCharacter_Id(character.getId());
                 List<CharacterItem> items = characterItemRepository.findByCharacter_Id(character.getId());
                 Integer maxHp = calculateMaxHp(character);
+                
                 List<NpcAffinity> affinities = npcAffinityRepository
                                 .findByNpcCharacter_Id(character.getId());
                 return characterMapper.toResponse(
@@ -477,17 +514,14 @@ public class CharacterService {
 
         @Transactional
         public List<CharacterResponse> getCharacters(
-                        Long campaignId,
-                        Long viewerMemberId) {
+                        Long campaignId) {
 
                 // 1. Campaign 必须存在
                 Campaign campaign = campaignRepository.findById(campaignId)
                                 .orElseThrow(() -> new CampaignNotFoundException(campaignId));
 
                 // 2. viewerMember 必须存在
-                CampaignMember viewerMember = campaignMemberRepository.findById(viewerMemberId)
-                                .orElseThrow(() -> new CampaignMemberNotFoundException(
-                                                viewerMemberId));
+                CampaignMember viewerMember = campaignAccessService.requireMember(campaignId);
 
                 // 3. viewer 必须属于这个 Campaign
                 if (!viewerMember.getCampaign().getId().equals(campaignId)) {
@@ -533,37 +567,17 @@ public class CharacterService {
 
         @Transactional
         public void deleteCharacter(
-                        Long characterId,
-                        Long viewerMemberId) {
+                        Long characterId) {
 
                 // 1. Character 存在
                 Character character = characterRepository.findById(characterId)
                                 .orElseThrow(() -> new CharacterNotFoundException(characterId));
 
                 // 2. viewer 存在
-                CampaignMember viewerMember = campaignMemberRepository.findById(viewerMemberId)
-                                .orElseThrow(() -> new CampaignMemberNotFoundException(
-                                                viewerMemberId));
-
-                // 3. 必须属于同一个 Campaign
-                if (!viewerMember.getCampaign().getId()
-                                .equals(character.getCampaign().getId())) {
-
-                        throw new BusinessRuleException(
-                                        "Viewer does not belong to this campaign");
-                }
+                CampaignMember viewerMember = campaignAccessService.requireMember(character.getCampaign().getId());
 
                 // 4. 只有 DM 或 owner 能删除
-                boolean isDm = viewerMember.getRole() == CampaignMemberRole.DM;
-
-                boolean isOwner = character.getOwnerMember() != null
-                                && character.getOwnerMember().getId()
-                                                .equals(viewerMember.getId());
-
-                if (!isDm && !isOwner) {
-                        throw new BusinessRuleException(
-                                        "Viewer is not allowed to delete this character");
-                }
+                campaignAccessService.requireCharacterEditor(character, viewerMember);
 
                 // 5. 先删除所有引用 Character 的关联数据
                 characterSkillRepository
@@ -585,37 +599,16 @@ public class CharacterService {
         @Transactional
         public CharacterResponse updateCharacter(
                         Long characterId,
-                        Long viewerMemberId,
                         CharacterUpdateRequest request) {
 
                 // 1. Character 存在
                 Character character = characterRepository.findById(characterId)
                                 .orElseThrow(() -> new CharacterNotFoundException(characterId));
 
-                // 2. viewer 存在
-                CampaignMember viewerMember = campaignMemberRepository.findById(viewerMemberId)
-                                .orElseThrow(() -> new CampaignMemberNotFoundException(
-                                                viewerMemberId));
+                CampaignMember member = campaignAccessService.requireMember(
+                                character.getCampaign().getId());
 
-                // 3. 同 Campaign
-                if (!viewerMember.getCampaign().getId()
-                                .equals(character.getCampaign().getId())) {
-
-                        throw new BusinessRuleException(
-                                        "Viewer does not belong to this campaign");
-                }
-
-                // 4. 只有 DM 或 owner 可以修改
-                boolean isDm = viewerMember.getRole() == CampaignMemberRole.DM;
-
-                boolean isOwner = character.getOwnerMember() != null
-                                && character.getOwnerMember().getId()
-                                                .equals(viewerMember.getId());
-
-                if (!isDm && !isOwner) {
-                        throw new BusinessRuleException(
-                                        "Viewer is not allowed to update this character");
-                }
+                campaignAccessService.requireCharacterEditor(character, member);
 
                 // 5. 如果改名字，检查 Campaign 内不能重名
                 if (!character.getName().equals(request.getName())
@@ -671,9 +664,7 @@ public class CharacterService {
                 // 9. 派生字段 + 权限
                 Integer maxHp = calculateMaxHp(savedCharacter);
 
-                boolean canViewPrivate = canViewPrivateFields(
-                                savedCharacter,
-                                viewerMember);
+                boolean canViewPrivate = true;
 
                 // 10. Response
                 return characterMapper.toResponse(

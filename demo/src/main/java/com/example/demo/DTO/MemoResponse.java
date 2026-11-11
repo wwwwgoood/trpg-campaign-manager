@@ -7,6 +7,8 @@ public record MemoResponse(
     Long campaignId,
     String name,
     MemoCategory category,
-    String description
+    String description,
+    boolean isPrivate,
+Long ownerMemberId
 ) {
 }
