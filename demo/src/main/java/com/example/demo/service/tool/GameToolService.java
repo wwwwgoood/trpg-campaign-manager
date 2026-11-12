@@ -25,24 +25,25 @@ public class GameToolService {
     // 工具一：掷骰
 
     public DiceRollResult rollDice(
-        ToolContext context,
-        String expression) {
+            ToolContext context,
+            String expression) {
 
-    requireContext(context);
+        requireContext(context);
 
-    return diceService.roll(expression);
-}
-private void requireContext(ToolContext context) {
-
-    if (context == null
-            || context.campaignId() == null
-            || context.userId() == null
-            || context.callerType() == null) {
-
-        throw new IllegalArgumentException(
-                "Invalid tool context");
+        return diceService.roll(expression);
     }
-}
+
+    private void requireContext(ToolContext context) {
+
+        if (context == null
+                || context.campaignId() == null
+                || context.userId() == null
+                || context.callerType() == null) {
+
+            throw new IllegalArgumentException(
+                    "Invalid tool context");
+        }
+    }
 
     // 工具二：执行游戏行动
     public List<String> executeAction(
@@ -52,5 +53,19 @@ private void requireContext(ToolContext context) {
 
         return actionExecutor.execute(
                 actionId, actorId, targetId);
+    }
+
+    public DiceRollResult rollDiceStateless(String expression) {
+        return diceService.roll(expression);
+    }
+
+    public List<String> executeActionAsAgent(
+            AgentPrincipal principal,
+            Long actionId,
+            Long actorId,
+            Long targetId) {
+
+        return actionExecutor.executeAsAgent(
+                principal, actionId, actorId, targetId);
     }
 }

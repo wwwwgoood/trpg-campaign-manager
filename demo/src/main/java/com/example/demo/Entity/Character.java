@@ -9,6 +9,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -77,6 +78,10 @@ public class Character {
 
     @Column(nullable = false)
     private Integer currentRp = 1;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_agent_id")
+    private CampaignAgent ownerAgent;
 
     @ManyToMany
     @JoinTable(name = "character_game_action", joinColumns = @JoinColumn(name = "character_id"), inverseJoinColumns = @JoinColumn(name = "action_id"), uniqueConstraints = @UniqueConstraint(columnNames = {
