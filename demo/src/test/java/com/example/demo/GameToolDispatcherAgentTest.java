@@ -22,23 +22,26 @@ import com.example.demo.service.CampaignAccessService;
 import com.example.demo.service.tool.AgentPrincipal;
 import com.example.demo.service.tool.GameToolDispatcher;
 import com.example.demo.service.tool.GameToolService;
+import com.example.demo.service.tool.IdempotentActionService;
 
 class GameToolDispatcherAgentTest {
 
     private CampaignAgentRepository agentRepository;
     private CampaignAccessService accessService;
     private GameToolDispatcher dispatcher;
+    private IdempotentActionService idempotentActionService;
 
     @BeforeEach
     void setUp() {
 
         agentRepository = mock(CampaignAgentRepository.class);
         accessService = mock(CampaignAccessService.class);
+        idempotentActionService=mock(IdempotentActionService.class);
 
         dispatcher = new GameToolDispatcher(
                 mock(GameToolService.class),
                 accessService,
-                agentRepository
+                agentRepository,idempotentActionService
         );
     }
 

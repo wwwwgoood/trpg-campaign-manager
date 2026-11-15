@@ -19,6 +19,7 @@ public class DeepSeekClient {
         private final RestClient restClient;
         private final String apiKey;
         private final String model;
+        private static final int MAX_ATTEMPTS = 2;
 
         public DeepSeekClient(
                         RestClient.Builder builder,
@@ -136,39 +137,48 @@ public class DeepSeekClient {
                         List<Object> tools,
                         String toolChoice) {
 
-                if (apiKey == null || apiKey.isBlank()) {
-                        throw new IllegalStateException(
-                                        "DEEPSEEK_API_KEY is not configured");
-                }
+                for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+                        try {
+                                JsonNode response = restClient.post()
+                                                .uri("/chat/completions")
+                                                .headers(h -> h.setBearerAuth(apiKey))
+                                                .contentType(MediaType.APPLICATION_JSON)
+                                                .body(Map.of(
+                                                                "model", model,
+                                                                "messages", messages,
+                                                                "tools", tools,
+                                                                "tool_choice", toolChoice,
+                                                                "thinking", Map.of("type", "disabled"),
+                                                                "stream", false))
+                                                .retrieve()
+                                                .body(JsonNode.class);
 
-                try {
-                        JsonNode response = restClient.post()
-                                        .uri("/chat/completions")
-                                        .headers(h -> h.setBearerAuth(apiKey))
-                                        .contentType(MediaType.APPLICATION_JSON)
-                                        .body(Map.of(
-                                                        "model", model,
-                                                        "messages", messages,
-                                                        "tools", tools,
-                                                        "tool_choice", toolChoice,
-                                                        "thinking", Map.of("type", "disabled"),
-                                                        "stream", false))
-                                        .retrieve()
-                                        .body(JsonNode.class);
+                                if (response == null
+                                                || !response.path("choices").isArray()
+                                                || response.path("choices").isEmpty()) {
+                                        throw new IllegalStateException(
+                                                        "Invalid DeepSeek response");
+                                }
 
-                        if (response == null
-                                        || !response.path("choices").isArray()
-                                        || response.path("choices").isEmpty()) {
+                                return response;
+
+                        } catch (ResourceAccessException e) {
+
+                                if (attempt == MAX_ATTEMPTS) {
+                                        throw new IllegalStateException(
+                                                        "DeepSeek network request failed after retries",
+                                                        e);
+                                }
+
+                                // 第一次连接失败：进入下一次循环
+                        } catch (RestClientException e) {
                                 throw new IllegalStateException(
-                                                "Invalid DeepSeek response");
+                                                "DeepSeek tool request failed", e);
                         }
-
-                        return response;
-
-                } catch (RestClientException e) {
-                        throw new IllegalStateException(
-                                        "DeepSeek tool request failed", e);
                 }
+
+                throw new IllegalStateException("Unreachable");
+
         }
 
         private record ChatMessage(

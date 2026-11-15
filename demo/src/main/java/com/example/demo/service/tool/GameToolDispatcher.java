@@ -18,12 +18,14 @@ public class GameToolDispatcher {
         private final GameToolService gameToolService;
         private final CampaignAccessService campaignAccessService;
         private final CampaignAgentRepository agentRepository;
+        private final IdempotentActionService idempotentActionService;
 
         public GameToolDispatcher(GameToolService gameToolService, CampaignAccessService campaignAccessService,
-                        CampaignAgentRepository agentRepository) {
+                        CampaignAgentRepository agentRepository, IdempotentActionService idempotentActionService) {
                 this.gameToolService = gameToolService;
                 this.campaignAccessService = campaignAccessService;
                 this.agentRepository = agentRepository;
+                this.idempotentActionService = idempotentActionService;
         }
 
         public Object dispatch(
@@ -150,7 +152,8 @@ public class GameToolDispatcher {
         public Object dispatchAgent(
                         AgentPrincipal principal,
                         String toolName,
-                        JsonNode arguments) {
+                        JsonNode arguments,
+                        String executionId) {
 
                 if (principal == null
                                 || toolName == null
@@ -173,12 +176,11 @@ public class GameToolDispatcher {
 
                         case "execute_action" -> {
                                 Long actionId = requireLong(arguments, "actionId");
-
                                 Long actorId = requireLong(arguments, "actorId");
-
                                 Long targetId = optionalLong(arguments, "targetId");
 
-                                yield gameToolService.executeActionAsAgent(
+                                yield idempotentActionService.executeOnce(
+                                                executionId,
                                                 principal,
                                                 actionId,
                                                 actorId,

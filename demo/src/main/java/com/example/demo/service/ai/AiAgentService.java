@@ -18,6 +18,7 @@ public class AiAgentService {
 
         private static final int MAX_ROUNDS = 4;
         private static final int MAX_TOOL_CALLS = 8;
+        private static final int MAX_ATTEMPTS = 2;
 
         private final DeepSeekClient deepSeekClient;
         private final GameToolDispatcher gameToolDispatcher;
@@ -172,6 +173,7 @@ public class AiAgentService {
                         for (JsonNode call : calls) {
 
                                 String callId = call.path("id").asText();
+                                String executionId = callId;
 
                                 String toolName = call.path("function")
                                                 .path("name").asText();
@@ -192,9 +194,11 @@ public class AiAgentService {
                                         result = gameToolDispatcher.dispatchStateless(
                                                         toolName, arguments);
                                 } else {
-                                        // AI Agent：经过工具分发器进行授权
                                         result = gameToolDispatcher.dispatchAgent(
-                                                        principal, toolName, arguments);
+                                                        principal,
+                                                        toolName,
+                                                        arguments,
+                                                        executionId);
                                 }
 
                                 messages.add(Map.of(
