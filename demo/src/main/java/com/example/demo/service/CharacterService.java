@@ -9,6 +9,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.example.demo.Entity.Campaign;
@@ -17,8 +18,10 @@ import com.example.demo.Entity.Character;
 import com.example.demo.Entity.CharacterItem;
 import com.example.demo.Entity.CharacterSkill;
 import com.example.demo.Entity.Feat;
+import com.example.demo.Entity.GameActionDefinition;
 import com.example.demo.Entity.NpcAffinity;
 import com.example.demo.Entity.Skill;
+import com.example.demo.dto.ActionToolResponse;
 import com.example.demo.dto.CharacterCreateRequest;
 import com.example.demo.dto.CharacterItemInput;
 import com.example.demo.dto.CharacterResponse;
@@ -40,8 +43,8 @@ import com.example.demo.repository.CharacterSkillRepository;
 import com.example.demo.repository.FeatRepository;
 import com.example.demo.repository.NpcAffinityRepository;
 import com.example.demo.repository.SkillRepository;
-
-import jakarta.transaction.Transactional;
+import com.example.demo.service.character.AgentCharacterAccessService;
+import com.example.demo.service.tool.AgentPrincipal;
 
 @Service
 public class CharacterService {
@@ -55,6 +58,7 @@ public class CharacterService {
         private final NpcAffinityRepository npcAffinityRepository;
         private CharacterMapper characterMapper;
         private final CampaignAccessService campaignAccessService;
+        private final AgentCharacterAccessService agentCharacterAccessService;
 
         /** 注入角色创建、关联数据查询及响应转换所需的组件。 */
         public CharacterService(CampaignRepository campaignRepository,
@@ -65,7 +69,9 @@ public class CharacterService {
                         FeatRepository featRepository,
                         CharacterSkillRepository characterSkillRepository,
                         CharacterMapper characterMapper,
-                        NpcAffinityRepository npcAffinityRepository, CampaignAccessService campaignAccessService) {
+                        NpcAffinityRepository npcAffinityRepository,
+                        CampaignAccessService campaignAccessService,
+                        AgentCharacterAccessService agentCharacterAccessService) {
                 this.campaignRepository = campaignRepository;
                 this.campaignMemberRepository = campaignMemberRepository;
                 this.characterRepository = characterRepository;
@@ -76,6 +82,77 @@ public class CharacterService {
                 this.characterSkillRepository = characterSkillRepository;
                 this.npcAffinityRepository = npcAffinityRepository;
                 this.campaignAccessService = campaignAccessService;
+                this.agentCharacterAccessService = agentCharacterAccessService;
+        }
+
+        @Transactional(readOnly = true)
+        public List<ActionToolResponse> getAvailableActionsForAgent(
+                        AgentPrincipal principal,
+                        Long actorId) {
+
+                Character actor = characterRepository.findById(         actorId)
+                                .orElseThrow(() -> new CharacterNotFoundException(actorId));
+
+                // 权限检查交给现有服务
+                agentCharacterAccessService.requireControl(principal, actor);
+
+                return actor.getKnownActions().stream()
+                                .map(action -> new ActionToolResponse(
+                                                action.getId(),
+                                                action.getName(),
+                                                action.getDescription(),
+                                                action.getRange(),
+                                                 action.getCostType(),
+                                                action.getCostValue(),
+                                                canAfford(actor, action)))
+                                .toList();
+        }
+
+        private boolean canAfford(
+                        Character actor,
+                        GameActionDefinition action) {
+
+                Integer cost = action.getCostValue();
+
+                if (cost == null || cost < 0
+                                || action.getCostType() == null) {
+                        return false;
+                }
+
+                return switch (action.getCostType()) {
+                        case NONE -> cost == 0;
+                        case AP -> actor.getCurrentAp() != null
+                                        && actor.getCurrentAp() >= cost;
+                        case RP -> actor.getCurrentRp() != null
+                                        && actor.getCurrentRp() >= cost;
+                        case HP -> actor.getCurrentHp() != null
+                                        && actor.getCurrentHp() > cost;
+                        case MP -> false;
+                };
+        }
+
+        private CharacterResponse buildCharacterResponse(
+                        Character character,
+                        boolean canViewPrivate) {
+
+                List<CharacterSkill> skills = characterSkillRepository.findByCharacter_Id(
+                                character.getId());
+
+                List<CharacterItem> items = characterItemRepository.findByCharacter_Id(
+                                character.getId());
+
+                List<NpcAffinity> affinities = npcAffinityRepository.findByNpcCharacter_Id(
+                                character.getId());
+
+                Integer maxHp = calculateMaxHp(character);
+
+                return characterMapper.toResponse(
+                                character,
+                                skills,
+                                items,
+                                affinities,
+                                maxHp,
+                                canViewPrivate);
         }
 
         /** 创建玩家角色及其技能、物品和专长，并按查看权限组装响应。 */
@@ -148,24 +225,7 @@ public class CharacterService {
                 fillBasicFields(character, request);
                 characterRepository.save(character);
 
-                List<CharacterSkill> characterSkills = buildCharacterSkills(character, request.getSkills());
-                characterSkillRepository.saveAll(characterSkills);
-
-                // 将物品输入转换为角色物品实体。
-                List<CharacterItem> items = buildCharacterItems(character, request.getItems());
-
-                characterItemRepository.saveAll(items);
-
-                // 校验专长 ID 并建立关联，同时拒绝玩家角色携带 NPC 亲密度。
-                List<Feat> feats = resolveFeats(request);
-                character.setFeats(feats);
-
-                // 根据当前查看者的权限包装私密字段，再生成对外响应。
-                boolean canViewPrivate = canViewPrivateFields(character, ownerMember);
-
-                Integer maxHp = calculateMaxHp(character);
-
-                return characterMapper.toResponse(character, characterSkills, items, List.of(), maxHp, canViewPrivate);
+                return buildCharacterResponse(character, canViewPrivateFields(character, ownerMember));
 
         }
 
@@ -491,25 +551,37 @@ public class CharacterService {
         @Transactional
         public CharacterResponse getCharacterResponse(
                         Long characterId) {
+
                 Character character = characterRepository.findById(characterId)
                                 .orElseThrow(() -> new CharacterNotFoundException(characterId));
-                CampaignMember viewerMember = campaignAccessService.requireMember(character.getCampaign().getId());
+
+                CampaignMember viewerMember = campaignAccessService.requireMember(
+                                character.getCampaign().getId());
 
                 boolean canViewPrivate = canViewPrivateFields(character, viewerMember);
 
-                List<CharacterSkill> skills = characterSkillRepository.findByCharacter_Id(character.getId());
-                List<CharacterItem> items = characterItemRepository.findByCharacter_Id(character.getId());
-                Integer maxHp = calculateMaxHp(character);
-                
-                List<NpcAffinity> affinities = npcAffinityRepository
-                                .findByNpcCharacter_Id(character.getId());
-                return characterMapper.toResponse(
-                                character,
-                                skills,
-                                items,
-                                affinities,
-                                maxHp,
-                                canViewPrivate);
+                return buildCharacterResponse(
+                                character, canViewPrivate);
+        }
+
+        @Transactional
+        public CharacterResponse getCharacterResponseForAgent(
+                        AgentPrincipal principal,
+                        Long characterId) {
+
+                if (principal == null) {
+                        throw new IllegalArgumentException(
+                                        "Agent principal is required");
+                }
+
+                Character character = characterRepository.findById(characterId)
+                                .orElseThrow(() -> new CharacterNotFoundException(characterId));
+
+                boolean canViewPrivate = agentCharacterAccessService.canViewPrivate(
+                                principal, character);
+
+                return buildCharacterResponse(
+                                character, canViewPrivate);
         }
 
         @Transactional

@@ -19,6 +19,7 @@ import com.example.demo.Entity.CampaignMember;
 import com.example.demo.enums.CampaignMemberRole;
 import com.example.demo.repository.CampaignAgentRepository;
 import com.example.demo.service.CampaignAccessService;
+import com.example.demo.service.CharacterService;
 import com.example.demo.service.tool.AgentPrincipal;
 import com.example.demo.service.tool.GameToolDispatcher;
 import com.example.demo.service.tool.GameToolService;
@@ -30,6 +31,7 @@ class GameToolDispatcherAgentTest {
     private CampaignAccessService accessService;
     private GameToolDispatcher dispatcher;
     private IdempotentActionService idempotentActionService;
+    private  CharacterService characterService;
 
     @BeforeEach
     void setUp() {
@@ -37,11 +39,12 @@ class GameToolDispatcherAgentTest {
         agentRepository = mock(CampaignAgentRepository.class);
         accessService = mock(CampaignAccessService.class);
         idempotentActionService=mock(IdempotentActionService.class);
+        characterService=mock(CharacterService.class);
 
         dispatcher = new GameToolDispatcher(
                 mock(GameToolService.class),
                 accessService,
-                agentRepository,idempotentActionService
+                agentRepository,idempotentActionService,characterService
         );
     }
 

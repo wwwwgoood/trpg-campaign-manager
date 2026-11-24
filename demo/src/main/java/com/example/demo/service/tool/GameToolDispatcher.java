@@ -9,6 +9,7 @@ import com.example.demo.Entity.CampaignMember;
 import com.example.demo.enums.CampaignMemberRole;
 import com.example.demo.repository.CampaignAgentRepository;
 import com.example.demo.service.CampaignAccessService;
+import com.example.demo.service.CharacterService;
 
 import tools.jackson.databind.JsonNode;
 
@@ -19,13 +20,17 @@ public class GameToolDispatcher {
         private final CampaignAccessService campaignAccessService;
         private final CampaignAgentRepository agentRepository;
         private final IdempotentActionService idempotentActionService;
+        private final CharacterService characterService;
+        
 
         public GameToolDispatcher(GameToolService gameToolService, CampaignAccessService campaignAccessService,
-                        CampaignAgentRepository agentRepository, IdempotentActionService idempotentActionService) {
+                        CampaignAgentRepository agentRepository, IdempotentActionService idempotentActionService,
+                        CharacterService characterService) {
                 this.gameToolService = gameToolService;
                 this.campaignAccessService = campaignAccessService;
                 this.agentRepository = agentRepository;
                 this.idempotentActionService = idempotentActionService;
+                this.characterService = characterService;
         }
 
         public Object dispatch(
@@ -185,6 +190,14 @@ public class GameToolDispatcher {
                                                 actionId,
                                                 actorId,
                                                 targetId);
+                        }
+
+                        case "get_character" -> {
+                                Long characterId = requireLong(
+                                                arguments, "characterId");
+
+                                yield characterService.getCharacterResponseForAgent(
+                                                principal, characterId);
                         }
 
                         default -> throw new IllegalArgumentException(
